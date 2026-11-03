@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Modernisasi dan Globalisasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f3f4f6;
+        }
+        .btn-option {
+            transition: all 0.2s;
+        }
+        .btn-option:disabled {
+            cursor: not-allowed;
+        }
+        .correct-answer {
+            background-color: #16a34a !important; /* Hijau */
+            color: #ffffff !important;
+            border-color: #16a34a !important;
+        }
+        .wrong-answer {
+            background-color: #dc2626 !important; /* Merah */
+            color: #ffffff !important;
+            border-color: #dc2626 !important;
+        }
+        /* Memastikan font jawaban kontras dengan background */
+        .btn-default {
+            background-color: #ffffff;
+            color: #1f2937;
+            border: 2px solid #e5e7eb;
+        }
+        .btn-default:hover:not(:disabled) {
+            background-color: #f9fafb;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- SETUP SCREEN -->
+    <div id="setup-screen" class="bg-white p-8 rounded-xl shadow-lg max-w-lg w-full text-center">
+        <h1 class="text-3xl font-bold text-blue-700 mb-2">Kuis Sosiologi</h1>
+        <h2 class="text-xl font-semibold text-gray-700 mb-6">Modernisasi & Globalisasi</h2>
+        
+        <div class="mb-4 text-left">
+            <label for="player-name" class="block text-gray-700 font-medium mb-2">Nama Pemain:</label>
+            <input type="text" id="player-name" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Masukkan nama Anda..." required>
+        </div>
+
+        <div class="mb-6 text-left">
+            <label class="block text-gray-700 font-medium mb-2">Durasi per Soal:</label>
+            <div class="flex gap-4">
+                <label class="flex items-center cursor-pointer">
+                    <input type="radio" name="time-limit" value="15" class="mr-2" checked> 15 Detik
+                </label>
+                <label class="flex items-center cursor-pointer">
+                    <input type="radio" name="time-limit" value="30" class="mr-2"> 30 Detik
+                </label>
+            </div>
+        </div>
+
+        <button onclick="startQuiz()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+            Mulai Kuis
+        </button>
+    </div>
+
+    <!-- QUIZ SCREEN -->
+    <div id="quiz-screen" class="bg-white p-8 rounded-xl shadow-lg max-w-2xl w-full hidden">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b">
+            <div class="text-gray-600 font-semibold">
+                Pemain: <span id="display-name" class="text-blue-600"></span>
+            </div>
+            <div class="text-gray-600 font-semibold">
+                Soal <span id="question-counter">1/30</span>
+            </div>
+            <div class="text-xl font-bold text-red-600 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span id="timer-display">15</span>s
+            </div>
+        </div>
+
+        <h2 id="question-text" class="text-xl font-bold text-gray-800 mb-6 min-h-[4rem]">
+            Teks Soal
+        </h2>
+
+        <div id="options-container" class="grid grid-cols-1 gap-3">
+            <!-- Options will be injected here -->
+        </div>
+    </div>
+
+    <!-- RESULT SCREEN -->
+    <div id="result-screen" class="bg-white p-8 rounded-xl shadow-lg max-w-3xl w-full hidden h-[90vh] flex flex-col">
+        <div class="text-center mb-6">
+            <h1 class="text-3xl font-bold text-blue-700 mb-2">Hasil Kuis: Modernisasi & Globalisasi</h1>
+            <p class="text-lg text-gray-600">Terima kasih telah bermain, <span id="result-name" class="font-bold text-gray-800"></span>!</p>
+            <div class="mt-4 p-4 bg-blue-50 rounded-lg inline-block">
+                <p class="text-sm text-gray-500 font-semibold uppercase tracking-wider">Total Skor</p>
+                <p id="final-score" class="text-5xl font-extrabold text-blue-600 mt-1">100</p>
+            </div>
+        </div>
+
+        <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Review Jawaban</h3>
+        <div id="review-container" class="overflow-y-auto flex-1 pr-2 space-y-4 mb-6">
+            <!-- Review items injected here -->
+        </div>
+
+        <button onclick="location.reload()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 mt-auto">
+            Main Lagi
+        </button>
+    </div>
+
+    <script>
+        const quizData = [
+            {
+                q: "Kata modernisasi berasal dari bahasa Latin 'modernus' yang terdiri dari kata 'modo' dan 'ernus'. Apakah arti dari kata 'modo'?",
+                options: [
+                    "Cara",
+                    "Waktu",
+                    "Masa kini",
+                    "Kemajuan"
+                ],
+                answer: "Cara"
+            },
+            {
+                q: "Siapakah sosiolog yang berpendapat bahwa modernisasi adalah suatu bentuk perubahan sosial yang biasanya didasarkan pada suatu perencanaan (social planning)?",
+                options: [
+                    "Soerjono Soekanto",
+                    "Koentjaraningrat",
+                    "Wilbert E. Moore",
+                    "Johan Willem Schoorl"
+                ],
+                answer: "Soerjono Soekanto"
+            },
+            {
+                q: "Menurut Alex Inkeles, terdapat 9 ciri manusia modern. Di bawah ini yang merupakan salah satu ciri tersebut adalah...",
+                options: [
+                    "Menghargai waktu dan berorientasi ke masa depan",
+                    "Menjunjung tinggi tradisi leluhur secara absolut",
+                    "Bersikap pasrah terhadap nasib dan lingkungan",
+                    "Menolak perubahan teknologi karena merusak moral"
+                ],
+                answer: "Menghargai waktu dan berorientasi ke masa depan"
+            },
+            {
+                q: "Thomas L. Friedman membagi sejarah globalisasi ke dalam tiga era. Siapakah yang menjadi aktor utama pada era Globalisasi 1.0 (1492-1800)?",
+                options: [
+                    "Negara-negara Eropa",
+                    "Perusahaan Multinasional",
+                    "Individu dan Era Digital",
+                    "Organisasi Internasional (PBB)"
+                ],
+                answer: "Negara-negara Eropa"
+            },
+            {
+                q: "Perusahaan multinasional yang lahir dan mengintegrasikan pasar, modal, serta tenaga kerja lintas negara merupakan agen kunci perubahan pada era...",
+                options: [
+                    "Globalisasi 2.0",
+                    "Globalisasi 1.0",
+                    "Globalisasi 3.0",
+                    "Globalisasi 4.0"
+                ],
+                answer: "Globalisasi 2.0"
+            },
+            {
+                q: "Kondisi 'dunia yang datar' (Flat World) dimana manusia membangun peradaban digital yang menyatukan potensi di seluruh dunia terjadi pada masa...",
+                options: [
+                    "Globalisasi 3.0",
+                    "Periode Klasik",
+                    "Globalisasi 1.0",
+                    "Globalisasi 2.0"
+                ],
+                answer: "Globalisasi 3.0"
+            },
+            {
+                q: "Siapakah tokoh yang mendefinisikan globalisasi sebagai sebuah istilah menyeluruh untuk proses ekonomi global, komunikasi instan, dan pasar uang global?",
+                options: [
+                    "Peter Drucker",
+                    "Anthony Giddens",
+                    "Emanuel Richter",
+                    "Jan Nederveen Pieterse"
+                ],
+                answer: "Peter Drucker"
+            },
+            {
+                q: "Anthony Giddens menyatakan globalisasi adalah proses peningkatan hubungan sosial mendunia. Apa dampak spesifik dari hal ini menurut Giddens?",
+                options: [
+                    "Menghubungkan peristiwa di satu lokasi dengan lokasi lain yang memicu perubahan",
+                    "Menciptakan ketergantungan ekonomi yang merugikan negara berkembang",
+                    "Menyatukan seluruh sistem politik dunia menjadi satu negara",
+                    "Menghilangkan budaya lokal secara total digantikan budaya Barat"
+                ],
+                answer: "Menghubungkan peristiwa di satu lokasi dengan lokasi lain yang memicu perubahan"
+            },
+            {
+                q: "Di bawah ini yang merupakan ciri-ciri globalisasi adalah...",
+                options: [
+                    "Perubahan konsep ruang dan waktu",
+                    "Menurunnya interaksi kultural antar bangsa",
+                    "Kemandirian ekonomi secara mutlak di setiap negara",
+                    "Berkurangnya masalah-masalah bersama lintas negara"
+                ],
+                answer: "Perubahan konsep ruang dan waktu"
+            },
+            {
+                q: "Digunakannya bahasa Inggris secara luas, digemarinya K-Pop, serta dirayakannya Halloween merupakan wujud nyata globalisasi di bidang...",
+                options: [
+                    "Budaya",
+                    "Ekonomi",
+                    "Politik",
+                    "Komunikasi"
+                ],
+                answer: "Budaya"
+            },
+            {
+                q: "Kegiatan e-commerce seperti penggunaan Shopee, Amazon, dan Lazada yang melintasi batas negara adalah contoh globalisasi di bidang...",
+                options: [
+                    "Ekonomi",
+                    "Komunikasi",
+                    "Transportasi",
+                    "Sosial"
+                ],
+                answer: "Ekonomi"
+            },
+            {
+                q: "Dibangunnya jaringan jalan tol dengan teknologi dan investor dari negara asing, serta penggunaan aplikasi seperti Google Maps, merupakan pengaruh globalisasi bidang...",
+                options: [
+                    "Transportasi",
+                    "Politik",
+                    "Komunikasi",
+                    "Budaya"
+                ],
+                answer: "Transportasi"
+            },
+            {
+                q: "Apa yang merupakan dampak negatif dari globalisasi di bidang ekonomi bagi pelaku usaha domestik?",
+                options: [
+                    "Persaingan ketat yang dapat menyingkirkan UMKM lokal",
+                    "Terbukanya lapangan pekerjaan secara besar-besaran",
+                    "Pertumbuhan ekonomi yang terus meningkat",
+                    "Transfer teknologi yang berjalan sangat lambat"
+                ],
+                answer: "Persaingan ketat yang dapat menyingkirkan UMKM lokal"
+            },
+            {
+                q: "Salah satu contoh globalisasi di bidang politik adalah diterapkannya sanksi internasional. Apa tujuan dari sanksi internasional (seperti sanksi PBB) tersebut?",
+                options: [
+                    "Menghentikan pelanggaran hukum internasional",
+                    "Memonopoli perdagangan negara berkembang",
+                    "Memaksa negara lain untuk mengubah budayanya",
+                    "Menurunkan nilai tukar mata uang asing"
+                ],
+                answer: "Menghentikan pelanggaran hukum internasional"
+            },
+            {
+                q: "Wilbert E. Moore berpendapat bahwa modernisasi adalah transformasi dari organisasi tradisional ke arah pola-pola ekonomis dan politis. Negara manakah yang dianggapnya sebagai pelopor (yang ditiru)?",
+                options: [
+                    "Negara-negara Barat yang telah stabil",
+                    "Negara-negara Asia Timur Raya",
+                    "Negara-negara berkembang di benua Afrika",
+                    "Negara-negara dengan peradaban klasik"
+                ],
+                answer: "Negara-negara Barat yang telah stabil"
+            },
+            {
+                q: "Koentjaraningrat mendefinisikan modernisasi sebagai...",
+                options: [
+                    "Usaha untuk hidup sesuai dengan zaman dan keadaan dunia sekarang",
+                    "Suatu proses pembangunan yang mengarah pada perubahan demi kemajuan",
+                    "Usaha mengarahkan masyarakat memproyeksikan diri ke masa depan nyata",
+                    "Penerapan pengetahuan ilmiah kepada semua aktivitas masyarakat"
+                ],
+                answer: "Usaha untuk hidup sesuai dengan zaman dan keadaan dunia sekarang"
+            },
+            {
+                q: "Masuknya perusahaan asing seperti Toyota, Unilever, dan Samsung untuk menanamkan modal di Indonesia mencerminkan fenomena globalisasi, yaitu...",
+                options: [
+                    "Investasi asing",
+                    "Perdagangan bebas",
+                    "Tenaga kerja global",
+                    "Pasar modal global"
+                ],
+                answer: "Investasi asing"
+            },
+            {
+                q: "Apa yang menjadi pendorong utama turunnya biaya transportasi pada era Globalisasi 1.0?",
+                options: [
+                    "Kereta api dan mesin uap",
+                    "Pesawat terbang dan radar",
+                    "Telegraf dan satelit",
+                    "Serat optik dan internet"
+                ],
+                answer: "Kereta api dan mesin uap"
+            },
+            {
+                q: "Ciri manusia modern menurut Alex Inkeles yang berkaitan dengan kontribusi seseorang dalam pekerjaan adalah...",
+                options: [
+                    "Menjunjung prinsip imbalan harus sesuai dengan kontribusi",
+                    "Menganggap semua orang memiliki posisi yang sama",
+                    "Bersikap rasional tanpa mempertimbangkan sisi kemanusiaan",
+                    "Tidak mempedulikan harkat hidup orang lain"
+                ],
+                answer: "Menjunjung prinsip imbalan harus sesuai dengan kontribusi"
+            },
+            {
+                q: "Diferensiasi, Individualisme, Rasionalitas, Ekonomisme, dan Perkembangan merupakan istilah yang merujuk pada...",
+                options: [
+                    "Ciri-ciri modernitas",
+                    "Dampak negatif globalisasi",
+                    "Syarat revolusi industri",
+                    "Prinsip dasar globalisasi 2.0"
+                ],
+                answer: "Ciri-ciri modernitas"
+            },
+            {
+                q: "Prof. Johan Willem Schoorl menekankan bahwa aspek yang paling menonjol dalam proses modernisasi adalah...",
+                options: [
+                    "Perubahan ilmu pengetahuan dan teknologi (iptek)",
+                    "Perubahan sistem ekonomi ke arah kapitalisme",
+                    "Perubahan cara berpakaian dan bahasa",
+                    "Perubahan batas geografis antar negara"
+                ],
+                answer: "Perubahan ilmu pengetahuan dan teknologi (iptek)"
+            },
+            {
+                q: "Munculnya organisasi lintas batas seperti PBB, ASEAN, dan G20 menunjukkan perkembangan globalisasi yang pesat pada bidang...",
+                options: [
+                    "Politik",
+                    "Sosial Budaya",
+                    "Ekonomi",
+                    "Hukum Internasional"
+                ],
+                answer: "Politik"
+            },
+            {
+                q: "Pada periode klasik (abad ke-1 M), fenomena globalisasi paling awal terjadi melalui...",
+                options: [
+                    "Terhubungnya peradaban dunia dalam jaringan jalur perdagangan kuno",
+                    "Penemuan benua Amerika oleh Columbus",
+                    "Ditemukannya telegraf dan telepon lintas benua",
+                    "Ekspansi perusahaan multinasional ke negara-negara jajahan"
+                ],
+                answer: "Terhubungnya peradaban dunia dalam jaringan jalur perdagangan kuno"
+            },
+            {
+                q: "Penggunaan media sosial seperti Facebook, TikTok, dan Instagram yang memungkinkan orang terhubung lintas negara secara instan merupakan fenomena globalisasi bidang...",
+                options: [
+                    "Komunikasi",
+                    "Politik",
+                    "Transportasi",
+                    "Ekonomi"
+                ],
+                answer: "Komunikasi"
+            },
+            {
+                q: "Dampak negatif dari perkembangan globalisasi transportasi adalah...",
+                options: [
+                    "Polusi, kemacetan, dan ketergantungan teknologi asing",
+                    "Hilangnya kedaulatan negara akibat organisasi internasional",
+                    "Kecanduan gadget dan mudahnya hoaks menyebar",
+                    "Meningkatnya angka pengangguran akibat TKI"
+                ],
+                answer: "Polusi, kemacetan, dan ketergantungan teknologi asing"
+            },
+            {
+                q: "Menurut Jan Nederveen Pieterse, pengertian globalisasi adalah...",
+                options: [
+                    "Proses jangka panjang dari keterkaitan dunia yang makin meningkat",
+                    "Jaringan kerja yang mempersatukan masyarakat menjadi persatuan dunia",
+                    "Interaksi antarmanusia, perusahaan, dan pemerintah berbagai negara",
+                    "Masuknya suatu kebudayaan ke ruang lingkup dunia"
+                ],
+                answer: "Proses jangka panjang dari keterkaitan dunia yang makin meningkat"
+            },
+            {
+                q: "Keberanian untuk menyatakan pendapat mengenai lingkungannya sendiri dan bersikap demokratis merupakan salah satu dari 9 ciri...",
+                options: [
+                    "Manusia modern (Alex Inkeles)",
+                    "Manusia global (Anthony Giddens)",
+                    "Masyarakat pos-industri (Peter Drucker)",
+                    "Masyarakat modern (Koentjaraningrat)"
+                ],
+                answer: "Manusia modern (Alex Inkeles)"
+            },
+            {
+                q: "Pertumbuhan transportasi laut global didorong oleh beberapa faktor, salah satu di antaranya adalah...",
+                options: [
+                    "Meningkatnya kargo sumber daya alam yang dibutuhkan negara maju",
+                    "Penurunan drastis produksi industri di negara-negara berkembang",
+                    "Menutupnya pelabuhan utama di benua Eropa bagi kapal asing",
+                    "Larangan penggunaan pesawat terbang untuk pengiriman kargo"
+                ],
+                answer: "Meningkatnya kargo sumber daya alam yang dibutuhkan negara maju"
+            },
+            {
+                q: "Batas geografis, jarak, dan waktu tidak lagi menjadi penghalang untuk bekerja sama. Hal ini dimungkinkan oleh 'infrastruktur penyatu global' yang menjadi ciri Globalisasi 3.0, yaitu...",
+                options: [
+                    "Teknologi informasi dan world wide web",
+                    "Penemuan mesin uap dan kereta api",
+                    "Sistem perbankan multinasional",
+                    "Pakta pertahanan militer antar negara"
+                ],
+                answer: "Teknologi informasi dan world wide web"
+            },
+            {
+                q: "Pembahasan bersama lintas negara mengenai isu perubahan iklim, terorisme, dan pandemi adalah bentuk dari meningkatnya 'masalah bersama' yang mencerminkan ciri globalisasi pada bidang...",
+                options: [
+                    "Politik",
+                    "Budaya",
+                    "Ekonomi",
+                    "Komunikasi"
+                ],
+                answer: "Politik"
+            }
+        ];
+
+        let shuffledQuestions = [];
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let correctCount = 0;
+        let timeLimit = 15;
+        let timeRemaining = 0;
+        let timerInterval;
+        let playerName = "";
+        let userHistory = []; // { q, userAns, correctAns, isCorrect }
+
+        function shuffleArray(array) {
+            let arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        function startQuiz() {
+            const nameInput = document.getElementById("player-name").value.trim();
+            if (!nameInput) {
+                alert("Harap masukkan nama Anda terlebih dahulu!");
+                return;
+            }
+            playerName = nameInput;
+            
+            const timeOptions = document.getElementsByName("time-limit");
+            for (let radio of timeOptions) {
+                if (radio.checked) {
+                    timeLimit = parseInt(radio.value);
+                    break;
+                }
+            }
+
+            // Shuffle questions
+            shuffledQuestions = shuffleArray(quizData);
+            // Limit to exactly 30 questions (though array is exactly 30 anyway)
+            shuffledQuestions = shuffledQuestions.slice(0, 30);
+            
+            currentQuestionIndex = 0;
+            score = 0;
+            correctCount = 0;
+            userHistory = [];
+
+            document.getElementById("setup-screen").classList.add("hidden");
+            document.getElementById("quiz-screen").classList.remove("hidden");
+            document.getElementById("display-name").innerText = playerName;
+
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            if (currentQuestionIndex >= shuffledQuestions.length) {
+                endQuiz();
+                return;
+            }
+
+            const currentQ = shuffledQuestions[currentQuestionIndex];
+            document.getElementById("question-counter").innerText = `${currentQuestionIndex + 1}/${shuffledQuestions.length}`;
+            document.getElementById("question-text").innerText = currentQ.q;
+
+            const optionsContainer = document.getElementById("options-container");
+            optionsContainer.innerHTML = "";
+
+            // Shuffle Options
+            const shuffledOptions = shuffleArray(currentQ.options);
+
+            shuffledOptions.forEach(opt => {
+                const btn = document.createElement("button");
+                btn.className = "btn-option btn-default w-full text-left px-5 py-4 rounded-lg font-medium shadow-sm";
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(btn, opt, currentQ.answer);
+                optionsContainer.appendChild(btn);
+            });
+
+            timeRemaining = timeLimit;
+            updateTimerDisplay();
+            clearInterval(timerInterval);
+            timerInterval = setInterval(handleTick, 1000);
+        }
+
+        function updateTimerDisplay() {
+            document.getElementById("timer-display").innerText = timeRemaining;
+        }
+
+        function handleTick() {
+            timeRemaining--;
+            updateTimerDisplay();
+            
+            if (timeRemaining <= 0) {
+                clearInterval(timerInterval);
+                timeOutAnswer();
+            }
+        }
+
+        function timeOutAnswer() {
+            const currentQ = shuffledQuestions[currentQuestionIndex];
+            const buttons = document.querySelectorAll(".btn-option");
+            
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                if (btn.innerText === currentQ.answer) {
+                    btn.classList.remove("btn-default");
+                    btn.classList.add("correct-answer");
+                }
+            });
+
+            recordHistory(currentQ.q, "Tidak Menjawab (Waktu Habis)", currentQ.answer, false);
+            
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 2000);
+        }
+
+        function triggerConfetti() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '#ffa62d', '#ff36ff']
+            });
+        }
+
+        function handleAnswer(selectedBtn, selectedText, correctText) {
+            clearInterval(timerInterval);
+            
+            const isCorrect = (selectedText === correctText);
+            const currentQ = shuffledQuestions[currentQuestionIndex];
+
+            const buttons = document.querySelectorAll(".btn-option");
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                if (btn.innerText === correctText) {
+                    btn.classList.remove("btn-default");
+                    btn.classList.add("correct-answer");
+                }
+            });
+
+            if (isCorrect) {
+                correctCount++;
+                triggerConfetti();
+            } else {
+                selectedBtn.classList.remove("btn-default");
+                selectedBtn.classList.add("wrong-answer");
+            }
+
+            recordHistory(currentQ.q, selectedText, correctText, isCorrect);
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                loadQuestion();
+            }, 2000); // Tunggu 2 detik sebelum ganti soal
+        }
+
+        function recordHistory(q, userAns, correctAns, isCorrect) {
+            userHistory.push({ q, userAns, correctAns, isCorrect });
+        }
+
+        function endQuiz() {
+            document.getElementById("quiz-screen").classList.add("hidden");
+            document.getElementById("result-screen").classList.remove("hidden");
+            
+            document.getElementById("result-name").innerText = playerName;
+            
+            // Calculate Score: (Benar / Total) * 100
+            score = Math.round((correctCount / shuffledQuestions.length) * 100);
+            document.getElementById("final-score").innerText = score;
+
+            renderReview();
+        }
+
+        function renderReview() {
+            const container = document.getElementById("review-container");
+            container.innerHTML = "";
+
+            userHistory.forEach((item, index) => {
+                const div = document.createElement("div");
+                div.className = "p-4 border rounded-lg bg-gray-50 text-left";
+                
+                const userColor = item.isCorrect ? "text-green-600 font-semibold" : "text-red-600 font-semibold";
+                
+                div.innerHTML = `
+                    <p class="font-bold text-gray-800 mb-2">${index + 1}. ${item.q}</p>
+                    <p class="text-sm text-gray-600">Jawaban Anda: <span class="${userColor}">${item.userAns}</span></p>
+                    ${!item.isCorrect ? `<p class="text-sm text-gray-600 mt-1">Jawaban Benar: <span class="text-green-600 font-semibold">${item.correctAns}</span></p>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
